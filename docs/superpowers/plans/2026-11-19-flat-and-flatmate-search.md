@@ -18,6 +18,16 @@ Seekers and posters use the same editable profile. Save each step as a draft and
 4. **Set your conditions.** For each criterion choose required, important, flexible or no preference. A poster with several rooms sets rent, occupancy, pet rules and availability separately for each listing. Show the applicable household conditions before someone enquires.
 5. **Preview and publish.** Show the photo gallery, introduction, visible background details, living habits, housing intentions and conditions. Link a live-in poster’s card from their room listing. Label a nonresident poster’s role and show the household’s supplied answers where available.
 
+### Get to know me
+
+Add an optional step before preview where people can select interest tags such as hiking, gaming, cooking, reading or live music, and write in a hobby of their own. Give each interest room for a detail. “I make fresh pasta on Sundays and usually cook too much” gives a potential flatmate more to ask about than “Cooking” alone.
+
+Let seekers and posters answer up to three prompts, such as “What are you into lately?”, “What would you invite a flatmate to join?” or “How do you recharge after a long week?” Let them feature one answer on their discovery card. The full profile shows the other published answers and hobbies beside their introduction. Each item can be edited or hidden independently.
+
+When both people publish the same interest tag, highlight it as a conversation starter. In an available chat, tapping the shared interest opens an editable draft such as “What have you been cooking lately?” The user chooses whether to send it. Keep hobbies and prompt answers optional and outside the housing compatibility calculation.
+
+**Acceptance check.** Two people publish cooking as a hobby. Each sees the shared interest and can read the other's featured answer. Hiding the hobby removes the shared-interest highlight from both views and preserves both fit scores. A profile with no hobbies or prompts can still publish and match.
+
 ## Listing form and search contract
 
 Use one definition for each field across posting, validation, filters and listing details. Label costs per month and distinguish the whole-flat price from the price of one room. Record currency on every amount.
