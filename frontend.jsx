@@ -38,7 +38,7 @@ function Account({onDeleted}) {
 function App() {
   const [user,setUser]=useState(undefined);
   const [page,setPage]=useState('search');
-  const [search,setSearch]=useState('flats');
+  const [search,setSearch]=useState('recommended');
   const [status,setStatus]=useState('');
   const [busy,setBusy]=useState(false);
   const refresh=useCallback(async()=>{
@@ -58,7 +58,7 @@ function App() {
     catch(e){setStatus(e.message);} finally{setBusy(false);}
   }
   async function logout() {
-    try {await request('logout',{});setUser(null);setStatus('');setSearch('flats');}
+    try {await request('logout',{});setUser(null);setStatus('');setSearch('recommended');}
     catch(error){setStatus(error.message);}
   }
   const submit=path=>async event=>{
@@ -75,16 +75,16 @@ function App() {
     } catch(e){setStatus(e.message);} finally{setBusy(false);}
   };
   return <><header><b>AlternateMe</b>{user && <nav aria-label="Account">
-    <button aria-pressed={page==='inbox'} onClick={()=>setPage('inbox')}>Inbox</button>
-    <button aria-pressed={page==='profile'} onClick={()=>setPage('profile')}>My profile</button>
+    {user.profileComplete && <><button aria-pressed={page==='inbox'} onClick={()=>setPage('inbox')}>Inbox</button>
+    <button aria-pressed={page==='profile'} onClick={()=>setPage('profile')}>My profile</button></>}
     <button onClick={logout}>Sign out</button></nav>}</header>
     <main>{user===undefined?(status?<button onClick={start}>Retry connection</button>:<p>Loading account…</p>):
-      !user?<fieldset disabled={busy}><Welcome submit={submit}/></fieldset>:<>
+      !user?<fieldset disabled={busy}><Welcome submit={submit}/></fieldset>:!user.profileComplete?<MemberProfile user={user} onboarding onSaved={async()=>{await refresh();setPage('search');setSearch('recommended');}}/>:<>
         <div role="group" aria-label="Account mode">{['search','post'].map(mode=><button key={mode}
           disabled={busy} aria-pressed={page===mode} onClick={()=>changeMode(mode)}>{mode==='search'?'Search':'Post'}</button>)}</div>
-        {page==='search' && <><nav aria-label="Search category"><button aria-pressed={search==='flats'} onClick={()=>setSearch('flats')}>Flats and rooms</button>
+        {page==='search' && <><nav aria-label="Search category"><button aria-pressed={search==='recommended'} onClick={()=>setSearch('recommended')}>For you</button><button aria-pressed={search==='flats'} onClick={()=>setSearch('flats')}>Flats and rooms</button>
           <button aria-pressed={search==='people'} onClick={()=>setSearch('people')}>Flatmates</button></nav>
-          {search==='people'?<People user={user}/>:<Listings user={user} mode="search"/>}</>}
+          {search==='recommended'?<><Listings key="suggested" user={user} mode="recommended"/>{user.discoverable && <People user={user}/>}</>:search==='people'?<People user={user}/>:<Listings user={user} mode="search"/>}</>}
         {page==='post' && <Listings user={user} mode="post"/>}
         {page==='profile' && <><MemberProfile user={user} onSaved={refresh}/><Account onDeleted={()=>{setUser(null);setStatus('Account deleted.');}}/></>}
         {page==='inbox' && <Inbox user={user}/>}

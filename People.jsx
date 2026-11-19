@@ -57,7 +57,7 @@ function Check({label,value,onChange}){
   return <label><input type="checkbox" checked={!!value} onChange={e=>onChange(e.target.checked)}/> {label}</label>;
 }
 const steps=['Introduction','Photos','Housing plans','Life at home','Interests & prompts','Preview'];
-export function MemberProfile({user,onSaved}){
+export function MemberProfile({user,onSaved,onboarding=false}){
   const [draft,set]=useState(()=>{
     const p=user.profile_draft||user;
     return {...p,housing:p.housing||{},preferences:p.preferences||{},habits:p.habits||{},interests:p.interests?.length?p.interests:(p.hobbies||'').split(',').map(s=>s.trim()).filter(Boolean).map(tag=>({tag,detail:'',visible:true})),prompts:p.prompts||[]};
@@ -76,10 +76,10 @@ export function MemberProfile({user,onSaved}){
       const {name,about,city,languages,hometown,show_hometown,housing,habits,preferences,interests,prompts,discoverable}=draft;
       await request('member-profile',{action,name,about,city,languages,hometown,show_hometown,housing,habits,preferences,interests,prompts,discoverable});
       if(action==='publish')await onSaved?.();
-      report(action==='publish'?'Profile saved.':'Draft saved.');
+      report(action==='publish'?'Profile saved.':'Draft saved.');return true;
     }catch(e){report(e.message);}finally{lock(false);}
   }
-  return <section><h1>My profile</h1><nav aria-label="Profile sections">{steps.map((s,i)=><button key={s} aria-current={step===i?'step':undefined} onClick={()=>go(i)}>{s}</button>)}</nav>
+  return <section><h1>{onboarding?'Complete your profile':'My profile'}</h1>{onboarding && <p>Add your name and housing plans to find places within your budget. Photos, personal details and flatmate visibility are optional.</p>}<nav aria-label="Profile sections">{steps.map((s,i)=><button key={s} aria-current={step===i?'step':undefined} onClick={()=>go(i)}>{s}</button>)}</nav>
     <article><h2>{steps[step]}</h2>
     {step===0&&<>{field('name','Display name',{maxLength:80})}{field('city','Current city',{maxLength:100})}{field('hometown','Hometown',{maxLength:100})}<Check label="Show hometown on my profile" value={draft.show_hometown} onChange={v=>put('show_hometown',v)}/>{field('languages','Languages',{maxLength:180})}{field('about','About me',{as:'textarea',maxLength:600})}</>}
     {step===1&&<PhotoGallery kind="profile" id={user.id} editable/>}
@@ -99,5 +99,5 @@ export function MemberProfile({user,onSaved}){
       {draft.prompts.map((i,n)=><fieldset key={n}><Field label="Prompt" options={PROMPTS} value={i.question} onChange={v=>item('prompts',n,'question',v)}/><Field label="Your answer" as="textarea" maxLength={350} value={i.answer} onChange={v=>item('prompts',n,'answer',v)}/><Check label="Show this answer" value={i.visible} onChange={v=>item('prompts',n,'visible',v)}/><Check label="Feature on discovery card" value={i.featured} onChange={v=>put('prompts',draft.prompts.map((x,idx)=>({...x,featured:idx===n&&v})))}/><button onClick={()=>drop('prompts',n)}>Remove prompt</button></fieldset>)}
       {draft.prompts.length<3&&<button onClick={()=>put('prompts',[...draft.prompts,{question:PROMPTS[0],answer:'',visible:true,featured:false}])}>Add prompt</button>}</>}
     {step===5&&<><MemberCard person={{...draft,id:user.id,hometown:draft.show_hometown?draft.hometown:''}}/><Check label="Show me in flatmate discovery" value={draft.discoverable} onChange={v=>put('discoverable',v)}/></>}
-    </article><button disabled={busy} onClick={()=>save('draft')}>Save draft</button>{step<5?<button onClick={()=>go(s=>s+1)}>Continue</button>:<button disabled={busy} onClick={()=>save('publish')}>Save profile and visibility</button>}<p role="status">{status}</p></section>;
+    </article><button disabled={busy} onClick={()=>save('draft')}>Save draft</button>{step<5?<button disabled={busy} onClick={async()=>{if(!onboarding || await save('draft'))go(s=>s+1);}}>Continue</button>:<button disabled={busy} onClick={()=>save('publish')}>{onboarding?'Finish and find matches':'Save profile and visibility'}</button>}<p role="status">{status}</p></section>;
 }

@@ -6,7 +6,7 @@ import { functionBaseUrl } from '@neon/env';
 import {registerRecoveryRoutes} from './recovery.mjs';
 import {registerSocial} from './social.mjs';
 import {registerListings} from './listings.mjs';
-import {registerPeople} from './people.mjs';
+import {registerPeople,profileComplete} from './people.mjs';
 import {registerPhotos} from './photos.mjs';
 import {PROMPTS} from './people-fields.mjs';
 const fail = (statusCode,message) => { throw Object.assign(new Error(message),{statusCode}); };
@@ -87,7 +87,7 @@ cloud.get('/api/me',async(req,reply)=>{
   const sql=database();
   await sql`INSERT INTO alternateme_profiles(id,name) VALUES(${user.id},${user.name || 'Member'}) ON CONFLICT DO NOTHING`;
   const [profile]=await sql`SELECT * FROM alternateme_profiles WHERE id=${user.id}`;
-  return {...profile,cloudProfile:true};
+  return {...profile,cloudProfile:true,profileComplete:profileComplete(profile)};
 });
 cloud.register(async api=>{
   api.decorateRequest('userId',null);

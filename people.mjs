@@ -4,6 +4,7 @@ const areas=s=>String(s||'').split(',').map(v=>v.trim().toLowerCase()).filter(Bo
 function complete(h){
   return !!(h?.intent && areas(h.area).length && h.currency && h.minRent!=null && h.maxRent!=null && h.start && h.end);
 }
+export function profileComplete(p){return Boolean(p?.name?.trim() && p.housing?.city?.trim() && complete(p.housing));}
 export function eligiblePair(a,b){
   const x=a.housing,y=b.housing;
   return !!(a.discoverable && b.discoverable && complete(x) && complete(y) &&
@@ -48,7 +49,7 @@ function validate(body,fail){
   data.interests=list(body.interests||[],15,'interests').map(i=>({tag:str(i?.tag,48,'interest'),detail:str(i?.detail,240,'interest detail'),visible:i?.visible===true})).filter(i=>i.tag);
   data.prompts=list(body.prompts||[],3,'prompts').map(i=>({question:str(i?.question,100,'prompt'),answer:str(i?.answer,350,'answer'),visible:i?.visible===true,featured:i?.featured===true})).filter(i=>i.answer||body.action==='draft');
   if(data.prompts.some(i=>!PROMPTS.includes(i.question))||data.prompts.filter(i=>i.featured).length>1)bad('featured prompts');
-  if(body.action==='publish'&&(!data.name||(data.discoverable&&(!complete(h)||!h.city))))bad('name, housing intention, target city, areas, budget and move window');
+  if(body.action==='publish'&&!profileComplete(data))bad('name, housing intention, target city, areas, budget and move window');
   return data;
 }
 export function registerPeople(api,{database,fail}){

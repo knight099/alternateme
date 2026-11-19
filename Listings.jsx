@@ -70,7 +70,13 @@ export function Listings({user,mode}){
   return <ListingView key={mode} user={user} mode={mode}/>;
 }
 function ListingView({user,mode}){
-  const mine=mode==='post', [url,setUrl]=useState(readUrl),[filters,setFilters]=useState(readUrl),[editor,edit]=useState(false);
+  function initialFilters(){
+    const explicit=readUrl();
+    if(mode!=='recommended'||Object.keys(explicit).length) return explicit;
+    const h=user.housing||{};
+    return {city:h.city,area:h.area,currency:h.currency,minRent:String(h.minRent??''),maxRent:String(h.maxRent??''),kind:h.kind,move:h.end};
+  }
+  const mine=mode==='post', [url,setUrl]=useState(initialFilters),[filters,setFilters]=useState(initialFilters),[editor,edit]=useState(false);
   const [rows,setRows]=useState(null),[detail,setDetail]=useState(null),[error,notify]=useState(''),[busy,lock]=useState(false),[version,refresh]=useState(0);
   const listing=url[mine?'postId':'listing'];
   function navigate(next){const u=new URL(location.href);u.search=new URLSearchParams(Object.entries(next).filter(([,v])=>v!==''&&v!=null)).toString();history.pushState(null,'',u);setUrl(next);edit(false);}
@@ -83,7 +89,7 @@ function ListingView({user,mode}){
   },[mine,url,listing,version]);
   const change=(k,v)=>setFilters(f=>({...f,[k]:v}));
   function apply(f){setFilters(f);navigate({...f,listing:''});}
-  return <section><h1>{mine?'Your listings':'Find a flat'}</h1>{error&&<p role="alert">{error}</p>}
+  return <section><h1>{mine?'Your listings':mode==='recommended'?'Flats for you':'Find a flat'}</h1>{error&&<p role="alert">{error}</p>}
     {editor?<Editor listing={detail} onSaved={id=>{open(id);refresh(v=>v+1);}} onCancel={()=>edit(false)}/>:
     listing?detail?<Detail data={detail} user={user} busy={busy} back={()=>open('')} edit={()=>edit(true)} transition={async status=>{lock(true);try{await request('/'+listing+'/status',{status});refresh(v=>v+1);}catch(e){notify(e.message);}finally{lock(false);}}}/>:<><p>{error?'':'Loading listing…'}</p><button onClick={()=>open('')}>Back to listings</button></>:
     <>{mine?<button onClick={()=>edit(true)}>Create listing</button>:<><form onSubmit={e=>{e.preventDefault();apply(filters);}}><div className="pair">{filterFields.slice(0,2).map(item=><Field key={item[0]} item={item} values={filters} change={change}/>)}</div>
