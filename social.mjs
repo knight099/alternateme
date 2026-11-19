@@ -33,7 +33,7 @@ export function registerSocial(api,{database,fail}) {
         a_vote=coalesce(excluded.a_vote,p.a_vote), b_vote=coalesce(excluded.b_vote,p.b_vote),
         connected=p.connected OR coalesce(coalesce(excluded.a_vote,p.a_vote)='like' AND coalesce(excluded.b_vote,p.b_vote)='like',false)
       WHERE NOT(p.a_block OR p.b_block) AND (CASE WHEN p.a=${me} THEN p.a_vote ELSE p.b_vote END IS NULL OR CASE WHEN p.a=${me} THEN p.a_vote ELSE p.b_vote END=${vote}) RETURNING id,connected
-      ), matched AS (INSERT INTO alternateme_threads(pair_id,state) SELECT id,'open' FROM decision WHERE connected
+      ), matched AS (INSERT INTO alternateme_threads(pair_id,state,needs_intro) SELECT id,'open',true FROM decision WHERE connected
         ON CONFLICT(pair_id) WHERE listing_id IS NULL DO NOTHING)
       SELECT * FROM decision`);
   });
@@ -42,29 +42,47 @@ export function registerSocial(api,{database,fail}) {
     if(!Number.isSafeInteger(listing)||listing<1||listing>2147483647) fail(400,'Choose a listing.');
     const question=req.body?.question;
     if(typeof question!=='string'||!question.trim()||question.length>2000) fail(400,'Enter your question in 2000 characters or fewer.');
-    return required(await database()`WITH offer AS (
+    const sql=database();
+    const [existing]=await sql`SELECT t.id,t.state,t.requester FROM alternateme_threads t JOIN alternateme_pairs p ON t.pair_id=p.id WHERE t.listing_id=${listing} AND t.requester=${me} AND NOT(p.a_block OR p.b_block)`;
+    if(existing) return existing;
+    return required(await sql`WITH offer AS (
       SELECT owner,id FROM alternateme_listings WHERE id=${listing} AND status='open' AND owner<>${me} FOR SHARE
     ), allowed AS (
-      INSERT INTO alternateme_pairs AS p(a,b) SELECT least(${me}::text COLLATE "C",owner),greatest(${me}::text COLLATE "C",owner) FROM offer
-      ON CONFLICT(a,b) DO UPDATE SET a=p.a WHERE NOT(p.a_block OR p.b_block) RETURNING id
+      INSERT INTO alternateme_pairs AS p(a,b,intro_a,intro_b) SELECT least(${me}::text COLLATE "C",owner),greatest(${me}::text COLLATE "C",owner),
+        CASE WHEN ${me}::text COLLATE "C"<owner THEN ${String(listing)} END,CASE WHEN ${me}::text COLLATE "C">owner THEN ${String(listing)} END FROM offer
+      ON CONFLICT(a,b) DO UPDATE SET intro_a=coalesce(excluded.intro_a,p.intro_a),intro_b=coalesce(excluded.intro_b,p.intro_b)
+      WHERE NOT(p.a_block OR p.b_block) AND coalesce(CASE WHEN p.a=${me} THEN p.intro_a ELSE p.intro_b END,${String(listing)})=${String(listing)} RETURNING id
     ) INSERT INTO alternateme_threads AS t(pair_id,listing_id,requester,question,state)
       SELECT id,${listing},${me},${question.trim()},'pending' FROM allowed
       ON CONFLICT(listing_id,requester) WHERE listing_id IS NOT NULL DO UPDATE SET question=t.question
       RETURNING id,state,requester`);
   });
+  api.post('/threads/:id/intro',async req=>{
+    const me=req.userId,body=req.body?.body;
+    if(typeof body!=='string'||!body.trim()||body.length>2000) fail(400,'Enter one introductory message.');
+    const rows=await database()`WITH gate AS (UPDATE alternateme_pairs p SET
+      intro_a=CASE WHEN p.a=${me} THEN 'match' ELSE p.intro_a END,
+      intro_b=CASE WHEN p.b=${me} THEN 'match' ELSE p.intro_b END
+      FROM alternateme_threads t WHERE t.id=${pairId(req)} AND t.pair_id=p.id AND t.needs_intro AND t.state='open'
+      AND ${me} IN(p.a,p.b) AND NOT(p.a_block OR p.b_block) AND (CASE WHEN p.a=${me} THEN p.intro_a ELSE p.intro_b END) IS NULL AND (CASE WHEN p.a=${me} THEN p.intro_b ELSE p.intro_a END) IS DISTINCT FROM 'match' RETURNING p.id)
+      UPDATE alternateme_threads t SET question=${body.trim()},intro_sender=${me},state='pending',needs_intro=false
+      FROM gate WHERE t.pair_id=gate.id AND t.id=${pairId(req)} AND t.needs_intro AND t.state='open' RETURNING t.id`;
+    if(!rows.length) fail(409,'An introduction is pending or this conversation is unavailable.');
+    return rows[0];
+  });
   api.post('/threads/:id/respond',async req=>{
     const me=req.userId, accept=req.body?.accept;
     if(typeof accept!=='boolean') fail(400,'Choose accept or decline.');
-    return required(await database()`UPDATE alternateme_threads t SET state=${accept?'open':'closed'}
+    return required(await database()`WITH response AS (UPDATE alternateme_threads t SET state=${accept?'open':'closed'}
       FROM alternateme_pairs p WHERE t.id=${pairId(req)} AND t.pair_id=p.id AND ${me} IN(p.a,p.b)
-      AND t.requester<>${me} AND t.state='pending' AND NOT(p.a_block OR p.b_block) RETURNING t.id`);
+      AND coalesce(t.requester,t.intro_sender)<>${me} AND t.state='pending' AND NOT(p.a_block OR p.b_block) RETURNING t.id,t.pair_id,coalesce(t.listing_id::text,'match') AS origin), released AS (UPDATE alternateme_pairs p SET intro_a=CASE WHEN p.b=${me} AND intro_a=r.origin THEN NULL ELSE intro_a END,intro_b=CASE WHEN p.a=${me} AND intro_b=r.origin THEN NULL ELSE intro_b END FROM response r WHERE p.id=r.pair_id AND ${accept}) SELECT id FROM response`);
   });
   api.post('/threads/:id/unmatch',async req=>required(await database()`WITH unmatched AS (
     UPDATE alternateme_pairs p SET connected=false,a_vote='pass',b_vote='pass' FROM alternateme_threads t
     WHERE t.id=${pairId(req)} AND p.id=t.pair_id AND t.listing_id IS NULL AND ${req.userId} IN(p.a,p.b) RETURNING p.id
     ) UPDATE alternateme_threads t SET state='closed' FROM unmatched WHERE t.pair_id=unmatched.id AND listing_id IS NULL RETURNING t.id`));
   api.get('/inbox',async req=>{
-    const rows=await database()`SELECT t.id,t.state,t.question,t.requester,l.title,l.status AS listing_status,l.details,
+    const rows=await database()`SELECT t.id,t.state,t.question,t.needs_intro,coalesce(t.requester,t.intro_sender) AS requester,l.title,l.status AS listing_status,l.details,
       viewer.interests AS mine,peer.interests AS theirs, seeker.preferences,seeker.habits,
       peer.id AS peer,peer.name FROM alternateme_threads t JOIN alternateme_pairs p ON p.id=t.pair_id
       JOIN alternateme_profiles viewer ON viewer.id=${req.userId}
@@ -73,7 +91,7 @@ export function registerSocial(api,{database,fail}) {
       WHERE viewer.id IN(p.a,p.b) AND NOT(p.a_block OR p.b_block) AND t.state<>'closed' ORDER BY t.id DESC`;
     return rows.map(({mine,theirs,details,preferences,habits,...t})=>({...t,connected:t.state==='open',
       shared:(mine||[]).filter(i=>i.visible && (theirs||[]).some(j=>j.visible && i.tag.toLowerCase()===j.tag.toLowerCase())).map(i=>i.tag),
-      fit:t.requester?listingFit(details||{},{preferences,habits}):null}));
+      fit:t.title?listingFit(details||{},{preferences,habits}):null}));
   });
   api.get('/threads/:id/messages',async req=>{
     const id=pairId(req),before=req.query?.before;
@@ -120,7 +138,7 @@ export function registerSocial(api,{database,fail}) {
     const id=pairId(req),me=req.userId,body=typeof req.body?.body==='string'?req.body.body.trim():'', token=req.body?.token;
     if(typeof body!=='string'||!body||body.length>2000||typeof token!=='string'||!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(token)) fail(400,'Check the message.');
     return required(await database()`WITH allowed AS (SELECT t.id FROM alternateme_threads t JOIN alternateme_pairs p ON p.id=t.pair_id WHERE t.id=${id} AND ${me} IN(a,b)
-      AND t.state='open' AND NOT(a_block OR b_block) FOR UPDATE OF p,t)
+      AND t.state='open' AND NOT t.needs_intro AND NOT(a_block OR b_block) FOR UPDATE OF p,t)
       INSERT INTO alternateme_messages AS m(thread_id,sender,token,body) SELECT id,${me},${token},${body} FROM allowed
       ON CONFLICT(thread_id,sender,token) DO UPDATE SET body=m.body WHERE m.body=excluded.body RETURNING id`);
   });

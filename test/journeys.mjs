@@ -14,6 +14,12 @@ export async function verify({a}){
  const votes=await Promise.all([a('ada','decisions',{target:'bea',vote:'like'}),a('bea','decisions',{target:'ada',vote:'like'})]);
  const threads=await a('bea','inbox');assert.equal(threads.length,1);const thread=threads[0].id;
  const endpoint='threads/'+thread+'/messages';const msg={token:crypto.randomUUID(),body:'Do you cook?'};
+ await a('ada',endpoint,msg,404);
+ await a('ada','threads/'+thread+'/intro',{body:'Hello!'});
+ await a('ada','threads/'+thread+'/intro',{body:'Another hello'},409);
+ await a('ada','threads/'+thread+'/respond',{accept:true},404);
+ await a('ada',endpoint,msg,404);
+ await a('bea','threads/'+thread+'/respond',{accept:true});
  await a('ada',endpoint,msg);await a('ada',endpoint,msg);assert.equal((await a('bea',endpoint)).length,1);
  await a('bea',endpoint,{token:crypto.randomUUID(),body:'Shall we shortlist flats together?'});
  assert.equal((await a('ada',endpoint)).length,2);
@@ -25,6 +31,10 @@ export async function verify({a}){
  assert.equal((await a('bea',query))[0].id,id);
  assert.deepEqual(await a('bea',query.replace('600','599')),[]);
  const req=await a('cam','requests',{listing:id,question:'Is there parking?'});
+ const other=await a('ada','listings',{...listing,title:'Second listing'});
+ await a('ada','listings/'+other.id+'/status',{status:'open'});
+ await a('cam','requests',{listing:other.id,question:'Another question'},404);
+ await a('ada','listings/'+other.id+'/status',{status:'filled'});
  await a('ada','threads/'+req.id+'/respond',{accept:true});
  await a('ada','listings/'+id+'/status',{status:'filled'});assert.deepEqual(await a('bea',query),[]);
  await a('cam',endpoint,undefined,404);await a('bea','reports',{target:'ada',reason:'test report'});

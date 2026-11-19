@@ -41,3 +41,15 @@ CREATE TABLE IF NOT EXISTS alternateme_reports (
   created_at timestamptz NOT NULL DEFAULT now(),
   CHECK (reporter <> subject)
 );
+ALTER TABLE alternateme_threads ADD COLUMN IF NOT EXISTS needs_intro boolean NOT NULL DEFAULT false;
+ALTER TABLE alternateme_threads ADD COLUMN IF NOT EXISTS intro_sender text;
+ALTER TABLE alternateme_pairs ADD COLUMN IF NOT EXISTS intro_a text, ADD COLUMN IF NOT EXISTS intro_b text;
+UPDATE alternateme_threads t SET needs_intro=true
+WHERE listing_id IS NULL AND state='open' AND intro_sender IS NULL AND NOT EXISTS(SELECT 1 FROM alternateme_messages m WHERE m.thread_id=t.id);
+UPDATE alternateme_threads t SET state='pending',intro_sender=m.sender,question=m.body FROM
+ (SELECT DISTINCT ON(thread_id) thread_id,sender,body FROM alternateme_messages ORDER BY thread_id,id) m
+WHERE t.id=m.thread_id AND t.listing_id IS NULL AND t.state='open' AND t.intro_sender IS NULL
+ AND NOT EXISTS(SELECT 1 FROM alternateme_messages r WHERE r.thread_id=t.id AND r.sender<>m.sender);
+UPDATE alternateme_pairs p SET intro_a=coalesce(intro_a,(SELECT CASE WHEN t.listing_id IS NULL THEN 'match' ELSE t.listing_id::text END FROM alternateme_threads t WHERE t.pair_id=p.id AND coalesce(t.requester,t.intro_sender)=p.a AND t.state IN ('pending','closed') ORDER BY t.id LIMIT 1)),
+ intro_b=coalesce(intro_b,(SELECT CASE WHEN t.listing_id IS NULL THEN 'match' ELSE t.listing_id::text END FROM alternateme_threads t WHERE t.pair_id=p.id AND coalesce(t.requester,t.intro_sender)=p.b AND t.state IN ('pending','closed') ORDER BY t.id LIMIT 1))
+ WHERE EXISTS(SELECT 1 FROM alternateme_threads t WHERE t.pair_id=p.id AND t.state IN ('pending','closed'));

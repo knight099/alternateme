@@ -92,7 +92,7 @@ function Chat({thread,user}) {
       const rows=await call('threads/'+thread.id+'/messages?before='+messages[0].id);
       setOlder(rows.length===100);setMessages(previous=>[...rows,...previous]);
     })}>Earlier messages</button>}
-    {thread.question && <p><b>Listing enquiry</b> {thread.question}</p>}
+    {thread.question && <p><b>{thread.title?'Listing enquiry':'Introduction'}</b> {thread.question}</p>}
     {thread.shared.map(tag=><button type="button" key={tag} onClick={()=>setDraft(tag.toLowerCase()==='cooking'?'What have you been cooking lately?':'What got you into '+tag.toLowerCase()+'?')}>{tag}</button>)}
     <ol>{messages.map(m=><li key={m.id}><b>{m.sender===user.id?'You':thread.name}</b> {m.body}{m.sender!==user.id && <Safety context={'message:'+m.id} target={m.sender} onBlock={()=>reload(n=>n+1)}/>}</li>)}</ol>
     <form onSubmit={e=>{e.preventDefault();run(async()=>{
@@ -117,6 +117,14 @@ function Fit({label,value}){
     <p>{value.answered} of {value.applicable} optional preferences answered</p>
     {['agreements','differences','unknowns','conflicts','needsConfirmation'].filter(key=>value[key].length).map(key=><p key={key}>{key==='needsConfirmation'?'Needs confirmation':key} · {value[key].join(', ')}</p>)}</details>;
 }
+function Introduction({thread,onSent}) {
+  const [body,setBody]=useState('');
+  const {busy,status,run}=useAction();
+  return <form onSubmit={e=>{e.preventDefault();run(async()=>{
+    await call('threads/'+thread.id+'/intro',{body});onSent();
+  });}}><label>Introduce yourself<textarea required maxLength={2000} value={body} onChange={e=>setBody(e.target.value)}/></label>
+    <button disabled={busy||!body.trim()}>Send one introduction</button><p role="status">{status}</p></form>;
+}
 export function Inbox({user}) {
   const [threads,setThreads]=useState(null),[selected,select]=useState(null),[version,reload]=useState(0),[error,setError]=useState('');
   const {busy,status,run}=useAction();
@@ -131,10 +139,10 @@ export function Inbox({user}) {
     {threads===null&&!error&&<p>Loading inbox…</p>}{threads?.length===0&&<p>Your matches and chat requests will appear here.</p>}
     {threads?.map(t=><article key={t.id}><h3>{t.name}</h3><p>{t.title||'Flatmate match'}{t.title&&t.listing_status!=='open'?' · Closed to new enquiries':''}</p>
       {t.question&&<p>{t.question}</p>}{t.fit&&<><Fit label="Fits your search (seeker)" value={t.fit.seeker}/><Fit label="Fits the household’s preferences" value={t.fit.household}/></>}
-      {!t.requester && <button type="button" disabled={busy} onClick={()=>run(async()=>{
+      {!t.title && <button type="button" disabled={busy} onClick={()=>run(async()=>{
         await call('threads/'+t.id+'/unmatch',{});setThreads(previous=>previous.filter(row=>row.id!==t.id));
       })}>Unmatch</button>}
-      {t.connected?<button type="button" onClick={()=>select(t.id)}>Open chat</button>:t.requester===user.id?<p>Request sent</p>:<>
+      {t.needs_intro?<Introduction thread={t} onSent={()=>reload(n=>n+1)}/>:t.connected?<button type="button" onClick={()=>select(t.id)}>Open chat</button>:t.requester===user.id?<p>Waiting for acceptance. You can send more messages once they accept.</p>:<>
         <p>Wants to chat</p>{[true,false].map(accept=><button type="button" key={String(accept)} disabled={busy} onClick={()=>run(async()=>{
           await call('threads/'+t.id+'/respond',{accept});reload(n=>n+1);if(accept) select(t.id);
         })}>{accept?'Accept':'Decline'}</button>)}</>}
