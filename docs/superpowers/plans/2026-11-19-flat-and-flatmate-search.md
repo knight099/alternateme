@@ -71,7 +71,7 @@ Authenticate senders and check membership on every read, send and realtime subsc
 
 ## Build sequence
 
-The first local release runs on Node.js and SQLite with cookie-based sessions. Managed storage and realtime messaging remain future infrastructure decisions. Choose the launch city and currency before seeding examples.
+The React frontend uses a same-origin Fastify API running on Node.js, with SQLite storage and cookie-based sessions. Managed storage and realtime messaging remain future infrastructure decisions. Choose the launch city and currency before seeding examples.
 
 | Milestone | Implementation | Acceptance check |
 | --- | --- | --- |
@@ -81,4 +81,4 @@ The first local release runs on Node.js and SQLite with cookie-based sessions. M
 | 4. Messaging | Implement thread creation, request handling, inbox, paginated history and realtime delivery. | A seeker can enquire without a like. Matched flatmates can chat. Retrying a send produces one message and a third account cannot read it. |
 | 5. Pilot readiness | Add blocking and reporting, review queue, account deletion, mobile keyboard and touch checks. Seed representative listings and profiles. | Run both journeys on mobile, including empty search, unavailable listing, interrupted send, unmatch and block. Verify blocked users cannot reconnect through a listing. |
 
-Organize routes under `app/flats`, `app/flatmates` and `app/inbox`. Keep filter definitions and matching rules under `lib/discovery` so the UI and server use the same semantics. Store migrations and access policies under `supabase/migrations`. Index published listings by city, availability and rent. Enforce unique directed decisions, canonical match pairs and thread origins in the database. Test filtering and ranking with fixed fixtures, then exercise permissions and concurrent creation against a real test database.
+Organize future Fastify endpoints under `/api/flats`, `/api/flatmates` and `/api/inbox`, with corresponding React views. Keep filter definitions and matching rules under `lib/discovery` so the UI and server use the same semantics. Version SQLite migrations alongside the backend and enforce access checks in Fastify. Index published listings by city, availability and rent. Enforce unique directed decisions, canonical match pairs and thread origins in the database. Test filtering and ranking with fixed fixtures, then exercise permissions and concurrent creation against a real test database.

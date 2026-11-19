@@ -1,11 +1,5 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AlternateMe</title><link rel="stylesheet" href="/style.css">
-<header><b>AlternateMe</b><nav id="account" hidden><button id="profileButton">My profile</button><button id="logout">Sign out</button></nav></header>
-<main>
-<section id="auth"><h1>Find your place.<br>Meet your flatmates.</h1>
-<form id="credentials"><h2 id="authTitle">Sign in</h2><label id="nameLabel" hidden>Display name<input name="name" maxlength="80"></label><label>Email<input required name="email" type="email" autocomplete="email"></label><label>Password<input required name="password" type="password" minlength="8" maxlength="256" autocomplete="current-password"></label><button id="submitAuth">Sign in</button><button type="button" id="toggleAuth">Create an account</button></form></section>
-<section id="home" hidden><div class="switch" aria-label="Account mode" role="group"><button id="searchButton">Search</button><button id="postButton">Post</button></div>
-<section id="search"><h1>Discover</h1><label>Looking for<select id="target"><option value="flats">Flats and rooms</option><option value="flatmates">Flatmates</option></select></label><label>Search<input id="query" type="search" placeholder="Area, room type or listing title"></label><div id="results"></div></section>
-<section id="post" hidden><h1>Post a place</h1><form id="listing"><label>Listing title<input required name="title" maxlength="100"></label><label>Area or city<input required name="area" maxlength="100"></label><label>Offer type<select name="kind"><option>Whole flat</option><option>Private room</option><option>Shared room</option></select></label><div class="pair"><label>Monthly rent<input required type="number" min="1" step="1" name="rent"></label><label>Currency code<input required name="currency" pattern="[A-Z]{3}" maxlength="3" placeholder="e.g. INR"></label></div><button>Publish listing</button></form><h2>Your listings</h2><div id="own"></div></section>
-<section id="profile" hidden><h1>My profile</h1><form id="bio"><label>Display name<input required name="name" maxlength="80"></label><label>About me<textarea name="about" maxlength="600"></textarea></label><label>Hometown<input name="hometown" maxlength="100"></label><label>Hobbies<input name="hobbies" maxlength="200"></label><label><input type="checkbox" name="discoverable"> Show me in flatmate search</label><button>Save profile</button></form></section></section>
-<p id="status" role="status"></p></main><script type="module" src="/app.js"></script></html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AlternateMe</title><link rel="stylesheet" href="/style.css"></head>
+<body><div id="root"></div><script defer src="/bundle.js"></script></body>
+</html>
