@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+export async function verify({a}){
+ const housing={city:'Leeds',area:'Hyde Park',intent:'Team up',currency:'GBP',minRent:400,maxRent:600,start:'2027-01-01',end:'2027-03-01'};
+ const base={action:'publish',discoverable:true,housing,interests:[{tag:'Cooking',visible:true}],habits:{quiet:'Quiet evenings',cleaning:'Weekly shared cleaning',meals:'Separate meals'}};
+ const pref=(priority,...choices)=>({priority,choices});
+ const ada={...base,name:'Ada',preferences:{quiet:pref('important','Quiet evenings'),cleaning:pref('flexible','Weekly shared cleaning'),meals:pref('flexible','Usually')}};
+ const bea={...base,name:'Bea',preferences:{quiet:pref('important','Quiet evenings'),cleaning:pref('flexible','Weekly shared cleaning')}};
+ await a('ada','member-profile',ada);await a('bea','member-profile',bea);
+ let [peer]=await a('ada','people');assert.equal(peer.id,'bea');assert.deepEqual([peer.fit.score,peer.reverseFit.score,peer.shared],[75,100,['Cooking']]);
+ await a('bea','member-profile',{...bea,interests:[]});
+ [peer]=await a('ada','people');assert.deepEqual([peer.fit.score,peer.reverseFit.score,peer.shared],[75,100,[]]);
+ await a('ada','member-profile',{...ada,preferences:{...ada.preferences,pets:pref('required','Pet-friendly')}});
+ assert.deepEqual(await a('ada','people'),[]);await a('ada','member-profile',ada);
+ const listing={title:'Sunny room',city:'Leeds',area:'Hyde Park',kind:'Private room',rent:600,currency:'GBP',available:'2027-01-15',amenities:['Laundry','Internet']};
+ const {id}=await a('ada','listings',listing);
+ await a('bea','listings/'+id,listing,404);assert.deepEqual(await a('bea','listings'),[]);
+ await a('ada','listings/'+id+'/status',{status:'open'});
+ const query='listings?city=Leeds&currency=GBP&maxRent=600&amenities=Laundry,Internet';
+ assert.equal((await a('bea',query))[0].id,id);
+ assert.deepEqual(await a('bea',query.replace('600','599')),[]);
+ const req=await a('cam','requests',{listing:id,question:'Is there parking?'});
+ await a('ada','threads/'+req.id+'/respond',{accept:true});
+ await a('ada','listings/'+id+'/status',{status:'filled'});assert.deepEqual(await a('bea',query),[]);
+ const votes=await Promise.all([a('ada','decisions',{target:'bea',vote:'like'}),a('bea','decisions',{target:'ada',vote:'like'})]);
+ const threads=await a('bea','inbox');assert.equal(threads.length,1);const thread=threads[0].id;
+ const endpoint='threads/'+thread+'/messages';const msg={token:crypto.randomUUID(),body:'Do you cook?'};
+ await a('ada',endpoint,msg);await a('ada',endpoint,msg);assert.equal((await a('bea',endpoint)).length,1);
+ await a('cam',endpoint,undefined,404);await a('bea','reports',{target:'ada',reason:'test report'});
+ await a('bea','blocks',{target:'ada'});await a('ada',endpoint,msg,404);
+ assert.equal((await a('bea','inbox')).length,0);
+ console.log('Passed listing, profile, eligibility, matching, requests, messages, reporting and blocking journeys.');
+}

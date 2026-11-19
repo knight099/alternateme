@@ -1,12 +1,9 @@
-import { readFile } from 'node:fs/promises';
-import { neon } from '@neondatabase/serverless';
-
-if (process.env.VERCEL_ENV === 'production') {
-  const sql = neon(process.env.DATABASE_URL);
-  const schema = await readFile(new URL('./schema.sql', import.meta.url), 'utf8');
-  const statements = schema.split(';').map(s => s.trim()).filter(Boolean);
-  await sql.transaction(statements.map(statement => sql.query(statement)));
-  await sql`SELECT id FROM alternateme_profiles LIMIT 0`;
-  await sql`SELECT id FROM alternateme_listings LIMIT 0`;
-  console.log('Verified Neon profile and listing tables.');
+import {neon} from '@neondatabase/serverless';
+import {schemaStatements} from './migrations.mjs';
+if (process.env.VERCEL_ENV === 'production' || process.argv.includes('--apply')) {
+  const sql=neon(process.env.DATABASE_URL);
+  const statements=await schemaStatements();
+  await sql.transaction(statements.map(s=>sql.query(s)));
+  await sql`SELECT p.id FROM alternateme_profiles p, alternateme_listings l, alternateme_threads t, alternateme_photos f LIMIT 0`;
+  console.log('Verified housing, matching, messaging and photo tables.');
 }

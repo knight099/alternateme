@@ -8,7 +8,8 @@
   "scripts": {
     "build": "esbuild frontend.jsx --bundle --minify --define:process.env.NODE_ENV=\\\"production\\\" --outfile=public/bundle.js",
     "prestart": "npm run build",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "test": "node --test test/launch.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1172.0",
@@ -19,5 +20,8 @@
     "fastify": "^5.6.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16"
   }
 }

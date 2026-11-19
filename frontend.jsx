@@ -1,156 +1,93 @@
-import React, {useEffect, useState} from 'react';
+import React,{useCallback,useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import {Welcome} from './Welcome.jsx';
+import {Listings} from './Listings.jsx';
+import {People,MemberProfile} from './People.jsx';
+import {Inbox} from './Social.jsx';
 
-async function api(path, data) {
-  const options = data === undefined ? {} : {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
-  };
-  const response = await fetch('/api/'+path,options);
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error);
+async function request(path,body) {
+  const response=await fetch('/api/'+path,body===undefined?{}:{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+  });
+  const result=await response.json();
+  if(!response.ok) throw Error(result.error || 'Request failed. Try again.');
   return result;
 }
 
-function Input({label,...props}) {
-  return <label>{label}<input {...props}/></label>;
-}
-
-function Auth({submit}) {
-  const [register,setRegister] = useState(false);
-  return <><h1>Find your place.<br/>Meet your flatmates.</h1>
-    <form onSubmit={submit(register?'register':'login')}>
-      <h2>{register?'Create account':'Sign in'}</h2>
-      {register && <Input label="Display name" name="name" required maxLength={80}/>}
-      <Input label="Email" name="email" type="email" autoComplete="email" required/>
-      <Input label="Password" name="password" type="password" autoComplete={register?'new-password':'current-password'} minLength={8} maxLength={256} required/>
-      <button>{register?'Create account':'Sign in'}</button>
-      <button type="button" onClick={()=>setRegister(!register)}>{register?'Use existing account':'Create an account'}</button>
-    </form></>;
-}
-
-function CloudProfileTools() {
+function Account({onDeleted}) {
   const [message,setMessage]=useState('');
-  const [preview,setPreview]=useState('');
-  const [prompts,setPrompts]=useState([]);
-  useEffect(()=>{
-    let active=true;
-    let objectUrl;
-    fetch('/api/portrait').then(async response=>{
-      if(response.ok && active) {
-        const image=await response.blob();
-        if(active) {objectUrl=URL.createObjectURL(image);setPreview(objectUrl);}
-      }
-    }).catch(()=>{});
-    return ()=>{active=false;if(objectUrl) URL.revokeObjectURL(objectUrl);};
-  },[]);
-  async function upload(event) {
+  const [busy,setBusy]=useState(false);
+  async function remove(event) {
     event.preventDefault();
-    const file=event.currentTarget.elements.photo.files[0];
-    if(!file || file.size>2000000) return setMessage('Choose a JPEG under 2 MB.');
+    setBusy(true);
     try {
-      const response=await fetch('/api/portrait',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:file});
-      if(!response.ok) throw Error((await response.json()).error);
-      setPreview('/api/portrait?v='+Date.now());setMessage('Portrait saved.');
-    } catch(error) {setMessage(error.message);}
+      const data=Object.fromEntries(new FormData(event.currentTarget));
+      const result=await request('account/delete',data);
+      if(result.deleted) onDeleted();
+      else setMessage(result.message);
+    } catch(e) {setMessage(e.message);} finally {setBusy(false);}
   }
-  return <><form onSubmit={upload}><h2>My portrait</h2>
-    {preview && <img src={preview} width="100" alt="Your profile portrait"/>}
-    <Input label="JPEG photo, up to 2 MB" name="photo" type="file" accept="image/jpeg" required/><button>Save portrait</button>
-  </form><button type="button" onClick={async()=>{
-    try {setPrompts((await api('profile-prompts')).prompts);}catch(error){setMessage(error.message);}
-  }}>Get ideas for my introduction</button>
-  <ul>{prompts.map(prompt=><li key={prompt}>{prompt}</li>)}</ul><p role="status">{message}</p></>;
-}
-
-function Profile({user,submit}) {
-  return <><h1>My profile</h1><form onSubmit={submit('profile')}>
-    <Input label="Display name" name="name" defaultValue={user.name} maxLength={80} required/>
-    <label>About me<textarea name="about" defaultValue={user.about} maxLength={600}/></label>
-    <Input label="Hometown" name="hometown" defaultValue={user.hometown} maxLength={100}/>
-    <Input label="Hobbies" name="hobbies" defaultValue={user.hobbies} maxLength={200}/>
-    <label><input type="checkbox" name="discoverable" defaultChecked={!!user.discoverable}/> Show me in flatmate search</label>
-    <button>Save profile</button>
-  </form>{user.cloudProfile && <CloudProfileTools/>}</>;
-}
-
-const kinds = ['Whole flat','Private room','Shared room'];
-function FlatCard({flat}) {
-  return <article><h3>{flat.title}</h3><p>{flat.kind} · {flat.area} · {flat.currency} {flat.rent} / month · {flat.name}</p></article>;
-}
-
-function Post({flats,submit}) {
-  return <><h1>Post a place</h1><form onSubmit={submit('flats')}>
-    <Input label="Listing title" name="title" required maxLength={100}/>
-    <Input label="Area or city" name="area" required maxLength={100}/>
-    <label>Offer type<select name="kind">{kinds.map(k=><option key={k}>{k}</option>)}</select></label>
-    <div className="pair"><Input label="Monthly rent" name="rent" required type="number" min={1} step={1}/>
-    <Input label="Currency code" name="currency" required pattern="[A-Z]{3}" maxLength={3} placeholder="e.g. INR"/></div>
-    <button>Publish listing</button></form><h2>Your listings</h2>
-    {flats.length?flats.map(f=><FlatCard key={f.id} flat={f}/>):<p>Your published listings will appear here.</p>}</>;
-}
-
-function Search({flats,people}) {
-  const [target,setTarget]=useState('flats');
-  const [query,setQuery]=useState('');
-  const [kind,setKind]=useState('');
-  const housing=target==='flats';
-  const matches = (housing?flats:people).filter(row=>{
-    const fields=housing?[row.title,row.area,row.kind,row.name,row.currency,String(row.rent)]:[row.name,row.hometown,row.about,row.hobbies];
-    return (!housing || !kind || row.kind===kind) && fields.join(' ').toLowerCase().includes(query.trim().toLowerCase());
-  });
-  return <><h1>Discover</h1><label>Looking for<select value={target} onChange={e=>{setTarget(e.target.value);setQuery('');}}>
-    <option value="flats">Flats and rooms</option><option value="people">Flatmates</option></select></label>
-    {housing && <label>Offer type<select value={kind} onChange={e=>setKind(e.target.value)}><option value="">All types</option>{kinds.map(k=><option key={k}>{k}</option>)}</select></label>}
-    <Input label="Search" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={housing?'Area, room type or listing title':'Name, hometown or hobby'}/>
-    {matches.map(row=>housing?<FlatCard key={row.id} flat={row}/>:<article key={row.id}><h3>{row.name}</h3><p>{[row.hometown,row.hobbies,row.about].filter(Boolean).join(' · ')}</p></article>)}
-    {!matches.length && <p>{housing?'No matching flats or rooms.':'No matching flatmates.'}</p>}</>;
+  return <details><summary>Delete my account</summary><form onSubmit={remove}>
+    <p>Deletion removes your profile, listings, gallery and conversations. This is permanent.</p>
+    <label>Current password<input type="password" autoComplete="current-password" name="password" required/></label>
+    <label>Type DELETE to confirm<input name="confirmation" pattern="DELETE" required/></label>
+    <button disabled={busy}>Permanently delete my account</button><p role="status">{message}</p>
+  </form></details>;
 }
 
 function App() {
   const [user,setUser]=useState(undefined);
-  const [flats,setFlats]=useState([]);
-  const [people,setPeople]=useState([]);
   const [page,setPage]=useState('search');
+  const [search,setSearch]=useState('flats');
   const [status,setStatus]=useState('');
   const [busy,setBusy]=useState(false);
-  async function refresh() {
-    const account=await api('me');
-    if (account) {
-      const [listings,profiles]=await Promise.all([api('flats'),api('flatmates')]);
-      setFlats(listings);setPeople(profiles);setPage(account.mode);
-    }
+  const refresh=useCallback(async()=>{
+    const account=await request('me');
     setUser(account);
     return account;
+  },[]);
+  const start=useCallback(async()=>{
+    try {const account=await refresh();setPage(account?.mode || 'search');setStatus('');}
+    catch(error){setStatus(error.message);}
+  },[refresh]);
+  useEffect(()=>{start();},[start]);
+  async function changeMode(mode) {
+    if(busy) return;
+    setBusy(true);
+    try {await request('mode',{mode});setPage(mode);setStatus('');}
+    catch(e){setStatus(e.message);} finally{setBusy(false);}
   }
-  useEffect(()=>{refresh().catch(e=>setStatus(e.message));},[]);
-  async function save(path,data,form) {
-    if (busy) return;
+  async function logout() {
+    try {await request('logout',{});setUser(null);setStatus('');setSearch('flats');}
+    catch(error){setStatus(error.message);}
+  }
+  const submit=path=>async event=>{
+    event.preventDefault();
+    if(busy) return;
+    const values=Object.fromEntries(new FormData(event.currentTarget));
     setBusy(true);setStatus('');
     try {
-      await api(path,data);
-      if (path==='flats') form.reset();
+      const result=await request(path,values);
+      if(result.verificationRequired) return result;
       const account=await refresh();
-      if(path==='register' && !account) setStatus('Check your email to verify your account, then sign in.');
-      if(path==='profile') setStatus('Profile saved.');
-      if(path==='flats') setStatus('Listing published.');
-    } catch(error) {setStatus(error.message);}
-    finally {setBusy(false);}
-  }
-  const submit=path=>event=>{
-    event.preventDefault();
-    const form=event.currentTarget;
-    const values=Object.fromEntries(new FormData(form));
-    if(path==='profile') values.discoverable=form.elements.discoverable.checked;
-    save(path,values,form);
+      if(account) setPage(account.mode);
+      return {verificationRequired:path==='register' && !account};
+    } catch(e){setStatus(e.message);} finally{setBusy(false);}
   };
-  return <><header><b>AlternateMe</b>{user && <nav><button disabled={busy} onClick={()=>setPage('profile')}>My profile</button><button disabled={busy} onClick={()=>save('logout',{})}>Sign out</button></nav>}</header>
-    <main><fieldset disabled={busy}>
-    {user===undefined?<p>Loading account…</p>:!user?<Auth submit={submit}/>:<>
-      <div role="group" aria-label="Account mode">{['search','post'].map(mode=><button aria-pressed={page===mode} key={mode} onClick={()=>save('mode',{mode})}>{mode==='search'?'Search':'Post'}</button>)}</div>
-      <section hidden={page!=='search'}><Search flats={flats} people={people}/></section>
-      <section hidden={page!=='post'}><Post flats={flats.filter(f=>f.owner===user.id)} submit={submit}/></section>
-      {page==='profile' && <Profile user={user} submit={submit}/>}
-    </>}</fieldset><p role="status">{status}</p></main></>;
+  return <><header><b>AlternateMe</b>{user && <nav aria-label="Account">
+    <button aria-pressed={page==='inbox'} onClick={()=>setPage('inbox')}>Inbox</button>
+    <button aria-pressed={page==='profile'} onClick={()=>setPage('profile')}>My profile</button>
+    <button onClick={logout}>Sign out</button></nav>}</header>
+    <main>{user===undefined?(status?<button onClick={start}>Retry connection</button>:<p>Loading account…</p>):
+      !user?<fieldset disabled={busy}><Welcome submit={submit}/></fieldset>:<>
+        <div role="group" aria-label="Account mode">{['search','post'].map(mode=><button key={mode}
+          disabled={busy} aria-pressed={page===mode} onClick={()=>changeMode(mode)}>{mode==='search'?'Search':'Post'}</button>)}</div>
+        {page==='search' && <><nav aria-label="Search category"><button aria-pressed={search==='flats'} onClick={()=>setSearch('flats')}>Flats and rooms</button>
+          <button aria-pressed={search==='people'} onClick={()=>setSearch('people')}>Flatmates</button></nav>
+          {search==='people'?<People user={user}/>:<Listings user={user} mode="search"/>}</>}
+        {page==='post' && <Listings user={user} mode="post"/>}
+        {page==='profile' && <><MemberProfile user={user} onSaved={refresh}/><Account onDeleted={()=>{setUser(null);setStatus('Account deleted.');}}/></>}
+        {page==='inbox' && <Inbox user={user}/>}
+      </>}<p role="status">{status}</p></main></>;
 }
-
 createRoot(document.getElementById('root')).render(<App/>);
