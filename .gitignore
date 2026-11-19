@@ -1,3 +1,9 @@
 *.sqlite*
 node_modules/
 public/bundle.js
+.neon
+
+.env
+.env.*
+.vercel/
+.neon

@@ -28,6 +28,40 @@ function Auth({submit}) {
     </form></>;
 }
 
+function CloudProfileTools() {
+  const [message,setMessage]=useState('');
+  const [preview,setPreview]=useState('');
+  const [prompts,setPrompts]=useState([]);
+  useEffect(()=>{
+    let active=true;
+    let objectUrl;
+    fetch('/api/portrait').then(async response=>{
+      if(response.ok && active) {
+        const image=await response.blob();
+        if(active) {objectUrl=URL.createObjectURL(image);setPreview(objectUrl);}
+      }
+    }).catch(()=>{});
+    return ()=>{active=false;if(objectUrl) URL.revokeObjectURL(objectUrl);};
+  },[]);
+  async function upload(event) {
+    event.preventDefault();
+    const file=event.currentTarget.elements.photo.files[0];
+    if(!file || file.size>2000000) return setMessage('Choose a JPEG under 2 MB.');
+    try {
+      const response=await fetch('/api/portrait',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:file});
+      if(!response.ok) throw Error((await response.json()).error);
+      setPreview('/api/portrait?v='+Date.now());setMessage('Portrait saved.');
+    } catch(error) {setMessage(error.message);}
+  }
+  return <><form onSubmit={upload}><h2>My portrait</h2>
+    {preview && <img src={preview} width="100" alt="Your profile portrait"/>}
+    <Input label="JPEG photo, up to 2 MB" name="photo" type="file" accept="image/jpeg" required/><button>Save portrait</button>
+  </form><button type="button" onClick={async()=>{
+    try {setPrompts((await api('profile-prompts')).prompts);}catch(error){setMessage(error.message);}
+  }}>Get ideas for my introduction</button>
+  <ul>{prompts.map(prompt=><li key={prompt}>{prompt}</li>)}</ul><p role="status">{message}</p></>;
+}
+
 function Profile({user,submit}) {
   return <><h1>My profile</h1><form onSubmit={submit('profile')}>
     <Input label="Display name" name="name" defaultValue={user.name} maxLength={80} required/>
@@ -36,7 +70,7 @@ function Profile({user,submit}) {
     <Input label="Hobbies" name="hobbies" defaultValue={user.hobbies} maxLength={200}/>
     <label><input type="checkbox" name="discoverable" defaultChecked={!!user.discoverable}/> Show me in flatmate search</label>
     <button>Save profile</button>
-  </form></>;
+  </form>{user.cloudProfile && <CloudProfileTools/>}</>;
 }
 
 const kinds = ['Whole flat','Private room','Shared room'];
@@ -86,6 +120,7 @@ function App() {
       setFlats(listings);setPeople(profiles);setPage(account.mode);
     }
     setUser(account);
+    return account;
   }
   useEffect(()=>{refresh().catch(e=>setStatus(e.message));},[]);
   async function save(path,data,form) {
@@ -94,7 +129,8 @@ function App() {
     try {
       await api(path,data);
       if (path==='flats') form.reset();
-      await refresh();
+      const account=await refresh();
+      if(path==='register' && !account) setStatus('Check your email to verify your account, then sign in.');
       if(path==='profile') setStatus('Profile saved.');
       if(path==='flats') setStatus('Listing published.');
     } catch(error) {setStatus(error.message);}
