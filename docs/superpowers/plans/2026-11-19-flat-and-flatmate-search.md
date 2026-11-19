@@ -2,6 +2,10 @@
 
 Someone moving to a new city can search for a home, find a person to rent with, or do both. Someone with a spare room can publish it and answer enquiries in the same app. Use FlatX as the reference for housing discovery and a mutual-like interaction for flatmate discovery. The first release targets mobile web.
 
+## One account with a Search/Post switch
+
+Each member signs in once. Search opens flat and flatmate discovery. Post opens listing creation and management. Both modes share the same profile, account ID and inbox. Remember the selected mode on the account. A switch never changes listing ownership, discovery visibility or conversations.
+
 ## Three entry points
 
 - **Find a flat.** Choose a city, set a monthly budget, compare results, open a listing and send the poster a question. Keep filters in the URL so returning from a detail page restores the search.
@@ -67,7 +71,7 @@ Authenticate senders and check membership on every read, send and realtime subsc
 
 ## Build sequence
 
-Proposed stack for the empty repository is Next.js, TypeScript and PostgreSQL, with Supabase Auth, Storage and Realtime. Choose the launch city and currency before seeding examples.
+The first local release runs on Node.js and SQLite with cookie-based sessions. Managed storage and realtime messaging remain future infrastructure decisions. Choose the launch city and currency before seeding examples.
 
 | Milestone | Implementation | Acceptance check |
 | --- | --- | --- |
