@@ -8,6 +8,16 @@ Someone moving to a new city can search for a home, find a person to rent with, 
 - **Find a flatmate.** Publish a flatmate profile with target areas, budget per person, move dates and household habits. People can join even when neither person has a flat. Each card shows shared preferences and relevant differences, with accessible Like and Pass buttons alongside swipe gestures.
 - **Post a flat or room.** Choose the offer type, enter terms, upload photos, preview the public card and publish. The poster can edit, pause, mark a place filled or reopen it. Only published, available offers appear in search.
 
+## Build a profile
+
+Seekers and posters use the same editable profile. Save each step as a draft and let people preview their discovery card before publishing.
+
+1. **Introduce yourself.** Add a display name, current city, optional hometown, languages and a short About me. Offer prompts such as “Where did you grow up?”, “What brings you here?” and “What would a typical Tuesday at home look like?” Let people choose which optional answers appear publicly.
+2. **Choose photos.** Upload a cover portrait and optional gallery, preview the crop on mobile, reorder photos, replace the cover or remove any image. Keep profile photos separate from property photos. Show a placeholder when someone skips this step.
+3. **Describe life at home.** Record your own habits separately from what you want in a flatmate. For example, “I work nights” describes you, while “I need quiet mornings” describes a household condition. Cover sleep and work schedules, cleaning, guests, shared meals, pets and indoor smoking.
+4. **Set your conditions.** For each criterion choose required, important, flexible or no preference. A poster with several rooms sets rent, occupancy, pet rules and availability separately for each listing. Show the applicable household conditions before someone enquires.
+5. **Preview and publish.** Show the photo gallery, introduction, visible background details, living habits, housing intentions and conditions. Link a live-in poster’s card from their room listing. Label a nonresident poster’s role and show the household’s supplied answers where available.
+
 ## Listing form and search contract
 
 Use one definition for each field across posting, validation, filters and listing details. Label costs per month and distinguish the whole-flat price from the price of one room. Record currency on every amount.
@@ -27,9 +37,17 @@ Required fields include location, offer type, rent, currency and availability. S
 
 Ask whether someone has a place or wants to team up. Capture neighbourhoods, monthly budget range, acceptable move-in window, stay length, smoking and pet requirements. Let users mark household preferences such as quiet hours, cleaning, guests and work schedule as important or flexible.
 
-First require compatible search intentions, a shared area, overlapping budget and date ranges, and satisfaction of both people's deal-breakers. Exclude self, blocked accounts, inactive profiles and previously decided cards. Rank eligible profiles by the share of answered preferences they agree on, weighting important preferences twice. Show the actual reasons on the card, such as “Both prefer quiet after 10 pm.” Show profiles with insufficient answers after scored profiles. Break ties by recent activity and stable profile ID.
+First require compatible search intentions, a shared area, overlapping budget and date ranges, and satisfaction of both people's deal-breakers. Exclude self, blocked accounts, inactive profiles and previously decided cards. Rank eligible profiles using the viewer’s directional score below. Show profiles with insufficient answers after scored profiles. Break ties by recent activity and stable profile ID.
 
 For example, two people seeking a place in the same area with budgets of 700–900 and 850–1000 can appear to each other if their dates overlap. A required pet-friendly household rules out a candidate who explicitly cannot live with pets. An unanswered deal-breaker stays ineligible until answered.
+
+## Compatibility from each side
+
+Calculate two directional scores for each eligible pairing. On a room listing, **Fits your search** compares the seeker's wishes with the room and household. **Fits the household’s preferences** compares the household’s wishes with the seeker’s answers. Show the same labelled results to the poster on the enquiry. For two people looking together, apply the same calculation in each direction using their profiles. A nonresident poster supplies only conditions they know about the household.
+
+Check required conditions first. Label a known conflict with the specific condition and an unanswered requirement as “Needs confirmation.” Neither qualifies for a recommended match. For optional criteria, use weight 2 for important and 1 for flexible. Award the weight when the other side’s answer falls within the accepted choices or range. Divide earned weight by the total weight of answered, applicable preferences and round to a percentage. Skip “no preference.” Alongside the score show answered criteria out of applicable preferences. With fewer than two answered criteria show “More answers needed.”
+
+For example, a seeker values quiet evenings (2), weekly shared cleaning (1) and shared meals (1). A household meeting the first two earns **75% fit for the seeker**. If the seeker meets both of the household’s two answered preferences, the same enquiry shows **100% fit for the household**. Tapping either number reveals the agreements, differences and unknowns. Recalculate after either profile or the listing changes. Photos, hometown, name and biography are for introductions and carry zero ranking weight.
 
 ## Chat and permissions
 
@@ -43,9 +61,9 @@ Proposed stack for the empty repository is Next.js, TypeScript and PostgreSQL, w
 
 | Milestone | Implementation | Acceptance check |
 | --- | --- | --- |
-| 1. Accounts and intentions | Set up the web app, database migrations and sign-in. Add profile editing and independent discovery toggles. | A user can choose flatmate discovery alone and return to their saved profile after sign-in. |
+| 1. Accounts and intentions | Set up the web app, database migrations and sign-in. Add profile editing and independent discovery toggles. | A user can resume a draft, change the cover photo, hide their hometown, choose flatmate discovery alone and return to their saved profile after sign-in. |
 | 2. Flat posting and discovery | Build the shared field schema, listing editor, photo storage, search query and detail page. Enforce owner-only edits. | Publish a private room, find it using combined filters at the exact maximum rent, then mark it filled and verify it disappears. |
-| 3. Flatmate matching | Add preference records, eligibility query, ranked card feed, decisions and transactional mutual-match creation. | Two compatible users with no listing can match. Conflicting deal-breakers exclude a card. Simultaneous likes produce one match. |
+| 3. Flatmate matching | Add preference records, eligibility query, ranked card feed, decisions and transactional mutual-match creation. | Two compatible users with no listing can match. Conflicting deal-breakers exclude a card. Simultaneous likes produce one match. Verify the 75% and 100% example in both views, the insufficient-answer state and recalculation after an edit. Changing a portrait or hometown must preserve both scores. |
 | 4. Messaging | Implement thread creation, request handling, inbox, paginated history and realtime delivery. | A seeker can enquire without a like. Matched flatmates can chat. Retrying a send produces one message and a third account cannot read it. |
 | 5. Pilot readiness | Add blocking and reporting, review queue, account deletion, mobile keyboard and touch checks. Seed representative listings and profiles. | Run both journeys on mobile, including empty search, unavailable listing, interrupted send, unmatch and block. Verify blocked users cannot reconnect through a listing. |
 
