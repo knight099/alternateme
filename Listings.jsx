@@ -10,8 +10,8 @@ async function request(path='',body){
   const data=await r.json();if(!r.ok)throw Error(data.error||'Could not load listings.');return data;
 }
 const filterFields=[
-  ['keyword','Search listing text','text'],['city','City','text'],['area','Neighbourhoods, separated by commas','text'],
-  ['currency','Currency code','currency'],['minRent','Minimum monthly rent','money'],['maxRent','Maximum monthly rent','money'],
+  ['state','State or union territory','text'],['district','District','text'],['city','City','text'],['area','Neighbourhoods, separated by commas','text'],
+  ['keyword','Search listing text','text'],['currency','Currency code','currency'],['minRent','Minimum monthly rent','money'],['maxRent','Maximum monthly rent','money'],
   ['maxDeposit','Maximum deposit','money'],['kind','Offer type'],['bedrooms','Minimum bedrooms','count'],['privateBath','Private bathroom'],
   ['occupancy','Occupants to accommodate','count'],['move','Move-in date','date'],['stay','Intended stay in months','count'],
   ['lease','Lease type'],['furnishing','Furnishing'],['pets','Pet policy'],['smoking','Smoking policy'],['size','Maximum household size','count'],
@@ -74,7 +74,7 @@ function ListingView({user,mode}){
     const explicit=readUrl();
     if(mode!=='recommended'||Object.keys(explicit).length) return explicit;
     const h=user.housing||{};
-    return {city:h.city,area:h.area,currency:h.currency,minRent:String(h.minRent??''),maxRent:String(h.maxRent??''),kind:h.kind,move:h.end};
+    return {state:h.state,district:h.district,city:h.city,area:h.area,currency:h.currency,minRent:String(h.minRent??''),maxRent:String(h.maxRent??''),kind:h.kind,move:h.end};
   }
   const mine=mode==='post', [url,setUrl]=useState(initialFilters),[filters,setFilters]=useState(initialFilters),[editor,edit]=useState(false);
   const [rows,setRows]=useState(null),[detail,setDetail]=useState(null),[error,notify]=useState(''),[busy,lock]=useState(false),[version,refresh]=useState(0);
@@ -92,8 +92,8 @@ function ListingView({user,mode}){
   return <section><h1>{mine?'Your listings':mode==='recommended'?'Flats for you':'Find a flat'}</h1>{error&&<p role="alert">{error}</p>}
     {editor?<Editor listing={detail} onSaved={id=>{open(id);refresh(v=>v+1);}} onCancel={()=>edit(false)}/>:
     listing?detail?<Detail data={detail} user={user} busy={busy} back={()=>open('')} edit={()=>edit(true)} transition={async status=>{lock(true);try{await request('/'+listing+'/status',{status});refresh(v=>v+1);}catch(e){notify(e.message);}finally{lock(false);}}}/>:<><p>{error?'':'Loading listing…'}</p><button onClick={()=>open('')}>Back to listings</button></>:
-    <>{mine?<button onClick={()=>edit(true)}>Create listing</button>:<><form onSubmit={e=>{e.preventDefault();apply(filters);}}><div className="pair">{filterFields.slice(0,2).map(item=><Field key={item[0]} item={item} values={filters} change={change}/>)}</div>
-      <details><summary>All filters and sorting</summary>{filterFields.slice(2).map(item=><Field key={item[0]} item={item} values={filters} change={change}/>)}<Features selected={(filters.amenities||'').split(',').filter(Boolean)} toggle={v=>change('amenities',v.join(','))}/></details><button>Apply filters</button></form>
+    <>{mine?<button onClick={()=>edit(true)}>Create listing</button>:<><form onSubmit={e=>{e.preventDefault();apply(filters);}}><div className="pair">{filterFields.slice(0,4).map(item=><Field key={item[0]} item={item} values={filters} change={change}/>)}</div>
+      <details><summary>All filters and sorting</summary>{filterFields.slice(4).map(item=><Field key={item[0]} item={item} values={filters} change={change}/>)}<Features selected={(filters.amenities||'').split(',').filter(Boolean)} toggle={v=>change('amenities',v.join(','))}/></details><button>Apply filters</button></form>
       <div>{[...filterFields,['amenities','Amenities']].filter(([k])=>url[k]).map(([k,label])=><button key={k} onClick={()=>apply({...url,[k]:''})}>Remove {label.toLowerCase()} · {url[k]}</button>)}</div></>}
       {rows===null?!error&&<p>Loading listings…</p>:rows.length?rows.map(l=><article key={l.id}>{l.cover&&<img src={'/api/photos/listing/'+l.id+'/'+l.cover} alt={l.title} loading="lazy" style={{width:'100%',maxHeight:240,objectFit:'cover'}}/>}<h3>{l.title}</h3><p>{[l.kind,l.area,l.city].filter(Boolean).join(' · ')}</p><p>{price(l)}</p>{mine&&<p>{l.status}</p>}<button onClick={()=>open(l.id)}>{mine?'Manage listing':'View listing'}</button></article>):<p>{mine?'Your listings will appear here.':'No places match these filters.'}</p>}</>}
   </section>;

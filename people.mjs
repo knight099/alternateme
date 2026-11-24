@@ -9,6 +9,7 @@ export function eligiblePair(a,b){
   const x=a.housing,y=b.housing;
   return !!(a.discoverable && b.discoverable && complete(x) && complete(y) &&
     !(x.intent==='Have a place' && y.intent==='Have a place') && x.city?.trim().toLowerCase()===y.city?.trim().toLowerCase() &&
+    ['state','district'].every(key=>!x[key] || !y[key] || x[key].trim().toLowerCase()===y[key].trim().toLowerCase()) &&
     areas(x.area).some(v=>areas(y.area).includes(v)) && x.currency===y.currency &&
     x.minRent<=y.maxRent && y.minRent<=x.maxRent && x.start<=y.end && y.start<=x.end &&
     fitDirection(a.preferences,b.habits).eligible && fitDirection(b.preferences,a.habits).eligible);
@@ -26,7 +27,7 @@ function validate(body,fail){
   data.show_hometown=body.show_hometown===true;
   data.discoverable=body.discoverable===true;
   const raw=body.housing||{},h={};
-  for(const [k,max] of Object.entries({intent:20,city:100,area:320,currency:3,kind:24,start:10,end:10,stay:80})) h[k]=str(raw[k],max,k);
+  for(const [k,max] of Object.entries({intent:20,state:100,district:100,city:100,area:320,currency:3,kind:24,start:10,end:10,stay:80})) h[k]=str(raw[k],max,k);
   if(h.intent&&!['Have a place','Team up'].includes(h.intent))bad('housing intention');
   if(h.kind&&!['Whole flat','Private room','Shared room'].includes(h.kind))bad('offer type');
   if(h.currency&&!/^[A-Z]{3}$/i.test(h.currency))bad('currency');

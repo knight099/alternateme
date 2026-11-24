@@ -9,6 +9,7 @@ export const fields = [
   ['furnishing','Furnishing',['Furnished','Semi-furnished','Unfurnished']],['pets','Pets',['Allowed','By agreement','No pets']],
   ['smoking','Indoor smoking',['Allowed','Smoke-free']],['size','Existing household size','count'],
   ['role','Poster role',['Live-in flatmate','Nonresident owner','Agent']],['household','About the household','long',1000],
+  ['state','State or union territory','text',100],['district','District','text',100],
   ['latitude','Approximate latitude','lat'],['longitude','Approximate longitude','lon']
 ];
 export const amenities = ['Parking','Lift','Step-free access','Laundry','Air conditioning','Internet'];
@@ -16,7 +17,7 @@ export const required = ['title','city','area','kind','currency','rent','availab
 export function matches(row,q){
   const lower=v=>String(v||'').trim().toLowerCase();
   const list=v=>String(v||'').split(',').map(lower).filter(Boolean);
-  const exact=['currency','kind','utilities','privateBath','lease','furnishing','pets','smoking'];
+  const exact=['state','district','currency','kind','utilities','privateBath','lease','furnishing','pets','smoking'];
   if(exact.some(k=>q[k] && lower(q[k])!==lower(row[k]))) return false;
   if(q.city && lower(row.city)!==lower(q.city)) return false;
   if(q.area && !list(q.area).includes(lower(row.area))) return false;
